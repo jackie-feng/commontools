@@ -1,0 +1,7 @@
+.idea/
+.vscode/
+bin/
+tmp/
+.env
+test/local/
+cover.out
