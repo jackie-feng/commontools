@@ -1,4 +1,4 @@
-module commontools
+module github.com/jackie-feng/commontools
 
 go 1.19
 
