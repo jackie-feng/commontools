@@ -1,0 +1,150 @@
+
+state 0
+	$accept: .top $end 
+
+	CHAR  shift 7
+	'('  shift 8
+	.  error
+
+	NODE  goto 2
+	NODE2  goto 4
+	NODE3  goto 3
+	AndExpr  goto 6
+	RepeatedExpr  goto 5
+	top  goto 1
+
+state 1
+	$accept:  top.$end 
+
+	$end  accept
+	.  error
+
+
+state 2
+	top:  NODE.    (1)
+	NODE:  NODE.'|' NODE3 
+
+	'|'  shift 9
+	.  reduce 1 (src line 23)
+
+
+state 3
+	NODE:  NODE3.    (2)
+
+	.  reduce 2 (src line 29)
+
+
+state 4
+	NODE3:  NODE2.    (4)
+	AndExpr:  NODE2.CHAR 
+	RepeatedExpr:  NODE2.'*' 
+
+	CHAR  shift 10
+	'*'  shift 11
+	.  reduce 4 (src line 39)
+
+
+state 5
+	NODE3:  RepeatedExpr.    (5)
+	AndExpr:  RepeatedExpr.CHAR 
+
+	CHAR  shift 12
+	.  reduce 5 (src line 44)
+
+
+state 6
+	NODE3:  AndExpr.    (6)
+	AndExpr:  AndExpr.CHAR 
+
+	CHAR  shift 13
+	.  reduce 6 (src line 48)
+
+
+state 7
+	NODE2:  CHAR.    (11)
+
+	.  reduce 11 (src line 75)
+
+
+state 8
+	NODE2:  '('.NODE ')' 
+
+	CHAR  shift 7
+	'('  shift 8
+	.  error
+
+	NODE  goto 14
+	NODE2  goto 4
+	NODE3  goto 3
+	AndExpr  goto 6
+	RepeatedExpr  goto 5
+
+state 9
+	NODE:  NODE '|'.NODE3 
+
+	CHAR  shift 7
+	'('  shift 8
+	.  error
+
+	NODE2  goto 4
+	NODE3  goto 15
+	AndExpr  goto 6
+	RepeatedExpr  goto 5
+
+state 10
+	AndExpr:  NODE2 CHAR.    (7)
+
+	.  reduce 7 (src line 54)
+
+
+state 11
+	RepeatedExpr:  NODE2 '*'.    (10)
+
+	.  reduce 10 (src line 69)
+
+
+state 12
+	AndExpr:  RepeatedExpr CHAR.    (8)
+
+	.  reduce 8 (src line 59)
+
+
+state 13
+	AndExpr:  AndExpr CHAR.    (9)
+
+	.  reduce 9 (src line 63)
+
+
+state 14
+	NODE:  NODE.'|' NODE3 
+	NODE2:  '(' NODE.')' 
+
+	'|'  shift 9
+	')'  shift 16
+	.  error
+
+
+state 15
+	NODE:  NODE '|' NODE3.    (3)
+
+	.  reduce 3 (src line 34)
+
+
+state 16
+	NODE2:  '(' NODE ')'.    (12)
+
+	.  reduce 12 (src line 80)
+
+
+10 terminals, 7 nonterminals
+13 grammar rules, 17/16000 states
+0 shift/reduce, 0 reduce/reduce conflicts reported
+56 working sets used
+memory: parser 14/240000
+14 extra closures
+13 shift entries, 1 exceptions
+8 goto entries
+7 entries saved by goto default
+Optimizer space used: output 17/240000
+17 table entries, 0 zero
+maximum spread: 10, maximum offset: 9
