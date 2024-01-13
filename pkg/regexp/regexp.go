@@ -30,3 +30,10 @@ func Reg() {
 		//fmt.Println(exprLex.ast)
 	}
 }
+
+func Compile(patten string) *NFA {
+	exprLex := NewLexer([]byte(patten))
+	exprParse := YoYoNewParser()
+	exprParse.Parse(exprLex)
+	return exprLex.NFA()
+}

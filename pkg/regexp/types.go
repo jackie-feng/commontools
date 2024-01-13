@@ -9,14 +9,36 @@ type Node interface{}
 
 type RUNE rune
 
+func (n RUNE) String() string {
+	if n == AnyRUNE {
+		return "Any"
+	}
+	if n == Epsilon {
+		return "Epsilon"
+	}
+
+	return fmt.Sprintf("Rune<%c>", rune(n))
+}
+
 type AnyChar int
 
 func (n AnyChar) String() string {
 	return fmt.Sprintf("AnyChar")
 }
 
-func (n RUNE) String() string {
-	return fmt.Sprintf("Rune<%c>", rune(n))
+func (n AnyChar) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if w, ok := s.Width(); ok {
+			fmt.Fprintf(s, "%*sAnyChar", w, "")
+			return
+		}
+		fmt.Fprintf(s, n.String())
+	case 's':
+		io.WriteString(s, n.String())
+	case 'q':
+		fmt.Fprintf(s, n.String())
+	}
 }
 
 func (n RUNE) Format(s fmt.State, verb rune) {
