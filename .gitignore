@@ -5,3 +5,4 @@ tmp/
 .env
 test/local/
 cover.out
+y.output
