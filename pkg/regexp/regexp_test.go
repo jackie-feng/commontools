@@ -28,15 +28,48 @@ func BenchmarkName(b *testing.B) {
 
 	reg, _ := regexp.Compile(patten)
 	reg2 := Compile(patten)
+	reg3 := reg2.ToDFA()
 	b.Run("regexp", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			reg.Match([]byte(str))
 		}
 	})
 
-	b.Run("regexp2", func(b *testing.B) {
+	b.Run("regexp_nfa", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			reg2.Match(str)
+		}
+	})
+
+	b.Run("regexp_dfa", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			reg3.Match(str)
+		}
+	})
+}
+
+func BenchmarkName2(b *testing.B) {
+	patten := "a(b|d)*c"
+	str := "abdbdbc"
+	b.Run("regexp", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			reg, _ := regexp.Compile(patten)
+			reg.Match([]byte(str))
+		}
+	})
+
+	b.Run("regexp_nfa", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			reg2 := Compile(patten)
+			reg2.Match(str)
+		}
+	})
+
+	b.Run("regexp_dfa", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			reg2 := Compile(patten)
+			reg3 := reg2.ToDFA()
+			reg3.Match(str)
 		}
 	})
 }

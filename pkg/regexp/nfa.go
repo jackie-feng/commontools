@@ -3,6 +3,9 @@ package regexp
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -28,6 +31,83 @@ func (n *NFA) newState() NFAState {
 	return n.state
 }
 
+type NFAStates map[NFAState]struct{}
+
+func (n NFAStates) key() string {
+	states := []NFAState{}
+	for s, _ := range n {
+		states = append(states, s)
+	}
+	sort.Slice(states, func(i, j int) bool {
+		return states[i] < states[j]
+	})
+	strs := make([]string, 0, len(states))
+	for _, s := range states {
+		strs = append(strs, strconv.Itoa(int(s)))
+	}
+	return strings.Join(strs, ",")
+}
+
+func (n *NFA) ToDFA() *DFA {
+	d := NewDFA()
+	s1 := d.newState()
+	d.startState = s1
+	states1 := n.epsilonClosure(NFAStates{n.startState: {}})
+	states1Key := states1.key()
+	statesMap := map[string]DFAState{states1Key: s1}
+
+	unsearchSet := map[string]NFAStates{states1.key(): states1}
+	searchedSet := map[string]struct{}{}
+	for len(unsearchSet) > 0 {
+		var key string
+		var states = NFAStates{}
+		for key, states = range unsearchSet {
+			break
+		}
+		delete(unsearchSet, key)
+		if _, ok := searchedSet[key]; ok {
+			continue
+		}
+		searchedSet[key] = struct{}{}
+		receiveChars := n.receivers(states)
+		for r, _ := range receiveChars {
+			newStates := n.epsilonClosure(n.move(states, r))
+			newStatesKey := newStates.key()
+
+			if _, ok := unsearchSet[newStatesKey]; !ok {
+				unsearchSet[newStatesKey] = newStates
+			}
+			if _, ok := statesMap[newStatesKey]; !ok {
+				s2 := d.newState()
+				statesMap[newStatesKey] = s2
+			}
+			d.add(statesMap[key], statesMap[newStatesKey], r)
+			if _, ok := newStates[n.endState]; ok {
+				d.endState[statesMap[newStatesKey]] = struct{}{}
+			}
+		}
+	}
+
+	return d
+}
+
+func (n *NFA) receivers(states NFAStates) map[RUNE]struct{} {
+	receiveChars := map[RUNE]struct{}{}
+	for s, _ := range states {
+		ps, ok := n.paths[s]
+		if !ok {
+			continue
+		}
+		for r, _ := range ps {
+			if r == Epsilon {
+				continue
+			}
+			receiveChars[r] = struct{}{}
+		}
+	}
+	return receiveChars
+}
+
 func (n *NFA) add(cur, next NFAState, r RUNE) {
 	ps, ok := n.paths[cur]
 	if !ok {
@@ -41,11 +121,11 @@ func (n *NFA) Match(str string) bool {
 	s := &scanner{line: []byte(str)}
 
 	if n.Debug {
-		fmt.Println(n.startState, n.endState)
-		fmt.Println(n.paths)
+		fmt.Printf("start: %d, end: %d \n", n.startState, n.endState)
+		fmt.Printf("paths: %d \n", n.paths)
 	}
 	state := n.startState
-	states := n.epsilonClosure(map[NFAState]struct{}{state: {}})
+	states := n.epsilonClosure(NFAStates{state: {}})
 	for {
 		r, err := s.next()
 		if err != nil {
@@ -54,15 +134,10 @@ func (n *NFA) Match(str string) bool {
 		if r == eof {
 			break
 		}
-		newStates := map[NFAState]struct{}{}
 		if n.Debug {
 			fmt.Printf("cur %c, states: %v\n", r, states)
 		}
-		for cur, _ := range states {
-			for next, _ := range n.nextStates(cur, RUNE(r)) {
-				newStates[next] = struct{}{}
-			}
-		}
+		newStates := n.move(states, RUNE(r))
 		states = n.epsilonClosure(newStates)
 	}
 	if n.Debug {
@@ -76,9 +151,9 @@ func (n *NFA) Match(str string) bool {
 	return false
 }
 
-func (n *NFA) epsilonClosure(states map[NFAState]struct{}) map[NFAState]struct{} {
-	stacks := map[NFAState]struct{}{}
-	for state, _ := range states {
+func (n *NFA) epsilonClosure(curStates NFAStates) NFAStates {
+	stacks := NFAStates{}
+	for state, _ := range curStates {
 		stacks[state] = struct{}{}
 	}
 
@@ -94,17 +169,29 @@ func (n *NFA) epsilonClosure(states map[NFAState]struct{}) map[NFAState]struct{}
 			continue
 		}
 		for _, t2 := range ps[Epsilon] {
-			if _, ok := states[t2]; !ok {
-				states[t2] = struct{}{}
+			if _, ok := curStates[t2]; !ok {
+				curStates[t2] = struct{}{}
 				stacks[t2] = struct{}{}
 			}
 		}
 	}
-	return states
+	return curStates
 }
 
-func (n *NFA) nextStates(cur NFAState, r RUNE) map[NFAState]struct{} {
-	states := make(map[NFAState]struct{})
+// 对 states 状态集, 输入 r 字符后, 可以到达的状态集
+func (n *NFA) move(states NFAStates, r RUNE) NFAStates {
+	newStates := NFAStates{}
+	for cur, _ := range states {
+		for next, _ := range n.nextStates(cur, r) {
+			newStates[next] = struct{}{}
+		}
+	}
+	return newStates
+}
+
+// 当前 cur 状态, 输入 r 字符后, 可以到达的状态集
+func (n *NFA) nextStates(cur NFAState, r RUNE) NFAStates {
+	states := make(NFAStates)
 	ps, ok := n.paths[cur]
 	if !ok {
 		return states
